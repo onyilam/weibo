@@ -28,35 +28,38 @@ class Weibo(object):
     def LoginWeibo(self):
         
         success = False
-        
-        try:
+        while success == False:
+            
+            try:
             #输入用户名/密码登录
-            print(u'准备登陆Weibo.cn网站...')
+                print(u'准备登陆Weibo.cn网站...')
             
-            self.driver.get("https://login.sina.com.cn/signup/signin.php")
-            WebDriverWait(self.driver, 8).until(lambda d: d.execute_script('return document.readyState') == 'complete')
-            elem_user = self.driver.find_element_by_name("username")
-            elem_user.send_keys(self.username) #用户名
-            elem_pwd = self.driver.find_element_by_name("password")
-            elem_pwd.send_keys(self.password)  #密码
-            #uncheck auto login
-            elem_auto = self.driver.find_element_by_xpath('//*[@id="remLoginName"]')
-            elem_auto.click()
-            time.sleep(3)
-            elem_sub = self.driver.find_element_by_xpath("//*[@id='vForm']/div[2]/div/ul/li[7]/div[1]/input")
-            elem_sub.click()              #点击登陆 因无name属性
-            #check if successfully login:
-            time.sleep(5)
-            WebDriverWait(self.driver, 10).until(lambda d: d.execute_script('return document.readyState') == 'complete')
-            if self.isElementPresent('//*[@id="remLoginName"]') == False:
-                sucess = True
-            else:
-                pass                  
+                self.driver.get("https://login.sina.com.cn/signup/signin.php")
+                WebDriverWait(self.driver, 8).until(lambda d: d.execute_script('return document.readyState') == 'complete')
+                elem_user = self.driver.find_element_by_name("username")
+                elem_user.send_keys(self.username) #用户名
+                elem_pwd = self.driver.find_element_by_name("password")
+                elem_pwd.send_keys(self.password)  #密码
+                #uncheck auto login
+                elem_auto = self.driver.find_element_by_xpath('//*[@id="remLoginName"]')
+                elem_auto.click()
+                time.sleep(3)
+                elem_sub = self.driver.find_element_by_xpath("//*[@id='vForm']/div[2]/div/ul/li[7]/div[1]/input")
+                elem_sub.click()              #点击登陆 因无name属性
+                #check if successfully login:
+                time.sleep(5)
+                WebDriverWait(self.driver, 10).until(lambda d: d.execute_script('return document.readyState') == 'complete')
+                                
+                #check if front page is loaded
+                if self.isElementPresent('//*[@id="SI_TopBar"]/div/p/a') == True:
+                    success = True
+                else:
+                    pass                  
             
-        except Exception as e:      
-            print("Error: ",e)
-        finally:    
-            print(u'登陆成功...!\n\n')
+            except Exception as e:      
+                print("Error: ",e)
+            finally:    
+                print(u'登陆成功...!\n\n')
         
         
     def SaveActivePage(self, userid):
@@ -64,7 +67,7 @@ class Weibo(object):
         This function sabes all the weibo tweets including the text, time, number of comments
         , number of post and number of support in the current page.  
         """
-        output = codecs.open('%s.txt' %userid , 'a', 'utf-8')
+        output = codecs.open('weibo/%s.txt' %userid , 'a', 'utf-8')
         
         if self.isElementPresent("//*[@id='Pl_Official_MyProfileFeed__20']/div/div[2]/div[1]/div[4]/div[3]")==False:
             for i in range (10, 50):
@@ -234,6 +237,42 @@ class Weibo(object):
         return(maxpage)
 
 
+    def VisitPersonPage(self, userid):
+            
+        userfile = codecs.open("weibo/user_stats.txt", 'a', 'utf-8') 
+        
+        try:
+            
+            str_name = self.driver.find_element_by_xpath("//div[@class='pf_username']/h1")
+            name = str_name.text        #str_name.text是unicode编码类型
+            print(u'昵称: ', name)
+        
+            #关注数 粉丝数 微博数 <td class='S_line1'>
+            str_elem = self.driver.find_elements_by_xpath("//table[@class='tb_counter']/tbody/tr/td/a")
+            str_gz = str_elem[0].text    #关注数
+            num_gz = re.findall(r'(\w*[0-9]+)\w*', str_gz)
+            str_fs = str_elem[1].text    #粉丝数
+            num_fs = re.findall(r'(\w*[0-9]+)\w*', str_fs)
+            str_wb = str_elem[2].text    #微博数
+            num_wb = re.findall(r'(\w*[0-9]+)\w*', str_wb)
+     
+            #文件操作写入信息
+            userfile.write('=====================================================================\r\n')
+            userfile.write(u'用户: ' + userid + '\r\n')
+            userfile.write(u'昵称: ' + name + '\r\n')
+            userfile.write(u'关注数: ' + str(num_gz[0]) + '\r\n')
+            userfile.write(u'粉丝数: ' + str(num_fs[0]) + '\r\n')
+            userfile.write(u'微博数: ' + str(num_wb[0]) + '\r\n')
+        
+        
+        except Exception as e:      
+            print("Error: ",e)
+        finally:    
+            print(u'Done!\n\n')
+            
+        userfile.close()
+        
+        
     def Scrape(self): 
         """
         This function scrolls down the active page to load all weibo tweets, save all content, and then move to the next page
@@ -246,23 +285,34 @@ class Weibo(object):
         else:
             userid = self.url.split(".com/",1)[1] 
     
-        output = codecs.open("%s.txt" %userid, 'w', 'utf-8') #create user id file
+        output = codecs.open("weibo/%s.txt" %userid, 'w', 'utf-8') #create user id file
         output.close()
     
         for i in range(1,maxpage+1): #go to each weibo page
             #select all post, not just the default "hot" ones
             url1 = self.url + "?is_search=0&visible=0&is_all=1&is_tag=0&profile_ftype=1&page=" + str(i) + "#feedtop"
-            print(url1)
-            self.driver.get(url1)
-            time.sleep(5)
+            loadpage = False
+            while loadpage == False:
+                try:
+                    print(url1)
+                    self.driver.get(url1)
+                    time.sleep(5)
+                except TimeoutException:
+                    self.driver.refresh()
+                    loadpage = False
+                finally:
+                    loadpage = True
             
             #scroll to bottom to load page
-            for i in range(1,5):
+            for j in range(1,5):
                 self.driver.execute_script("window.scrollTo(0, document.body.scrollHeight)")
                 time.sleep(3)
                 WebDriverWait(self.driver, 8).until(lambda d: d.execute_script('return document.readyState') == 'complete')
                 
             print('page is scrape ready')
+            if i == 1:
+                self.VisitPersonPage(userid)
+                
             YearLastWeibo = self.SaveActivePage(userid)
             
             if YearLastWeibo < 2016: #retrive only tweets in as far back as 2016
