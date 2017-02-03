@@ -33,33 +33,34 @@ class Weibo(object):
             try:
             #输入用户名/密码登录
                 print(u'准备登陆Weibo.cn网站...')
-            
-                self.driver.get("https://login.sina.com.cn/signup/signin.php")
-                WebDriverWait(self.driver, 8).until(lambda d: d.execute_script('return document.readyState') == 'complete')
-                elem_user = self.driver.find_element_by_name("username")
-                elem_user.send_keys(self.username) #用户名
-                elem_pwd = self.driver.find_element_by_name("password")
-                elem_pwd.send_keys(self.password)  #密码
-                #uncheck auto login
-                elem_auto = self.driver.find_element_by_xpath('//*[@id="remLoginName"]')
-                elem_auto.click()
-                time.sleep(3)
-                elem_sub = self.driver.find_element_by_xpath("//*[@id='vForm']/div[2]/div/ul/li[7]/div[1]/input")
-                elem_sub.click()              #点击登陆 因无name属性
-                #check if successfully login:
-                time.sleep(5)
-                WebDriverWait(self.driver, 10).until(lambda d: d.execute_script('return document.readyState') == 'complete')
-                                
                 #check if front page is loaded
                 if self.isElementPresent('//*[@id="SI_TopBar"]/div/p/a') == True:
                     success = True
+                    print('element found')
                 else:
-                    pass                  
-            
-            except Exception as e:      
+                    success = False  
+                    self.driver.get("https://login.sina.com.cn/signup/signin.php")
+                    WebDriverWait(self.driver, 8).until(lambda d: d.execute_script('return document.readyState') == 'complete')
+                    elem_user = self.driver.find_element_by_name("username")
+                    elem_user.send_keys(self.username) #用户名
+                    elem_pwd = self.driver.find_element_by_name("password")
+                    elem_pwd.send_keys(self.password)  #密码
+                    #uncheck auto login
+                    elem_auto = self.driver.find_element_by_xpath('//*[@id="remLoginName"]')
+                    elem_auto.click()
+                    time.sleep(3)
+                    elem_sub = self.driver.find_element_by_xpath("//*[@id='vForm']/div[2]/div/ul/li[7]/div[1]/input")
+                    elem_sub.click()              #点击登陆 因无name属性
+                    #check if successfully login:
+                    time.sleep(5)
+                    #WebDriverWait(self.driver, 5).until(lambda d: d.execute_script('return document.readyState') == 'complete')
+
+            except Exception as e: 
+                self.driver.refresh()
+                success = False
                 print("Error: ",e)
-            finally:    
-                print(u'登陆成功...!\n\n')
+     
+        print(u'登陆成功...!\n\n')
         
         
     def SaveActivePage(self, userid):
@@ -67,7 +68,8 @@ class Weibo(object):
         This function sabes all the weibo tweets including the text, time, number of comments
         , number of post and number of support in the current page.  
         """
-        output = codecs.open('weibo/%s.txt' %userid , 'a', 'utf-8')
+        output = codecs.open('weibo_data/%s.txt' %userid , 'a', 'utf-8')
+ 
         
         if self.isElementPresent("//*[@id='Pl_Official_MyProfileFeed__20']/div/div[2]/div[1]/div[4]/div[3]")==False:
             for i in range (10, 50):
@@ -77,7 +79,11 @@ class Weibo(object):
                 else:
                     break
             print(elem)
-            
+        
+        #check if there is any weibo posts
+        #check = elem + "/div/div[2]/div/div/div/p[2]"
+        #if self.driver.find_element_by_xpath.   
+        #    没有发过微博
            
         for i in range(2, 60):
             try:
@@ -132,6 +138,7 @@ class Weibo(object):
                 except NoSuchElementException: 
                     
                     try: 
+                        
                         commentshare_elem = elem + "/div/div[%d]/div[1]/div[3]/div[3]" %i
                         oripost_elem = elem + "/div/div[%d]/div[1]/div[3]/div[4]/div[2]/div[2]" %i
                         oriauthor_elem = elem + "/div/div[%d]/div[1]/div[3]/div[4]/div[2]/div[1]/a[1]" %i
@@ -145,12 +152,13 @@ class Weibo(object):
                         
                     except NoSuchElementException:
                         
-                        try:   
+                        try:  
+                            
                             fwdtext_elem = elem + "/div/div[%d]/div[2]/div[4]/div[3]" %i
                             fwdauthor_elem = elem + "/div/div[%d]/div[2]/div[4]/div[1]/a[1]" %i
                             oriauthor_elem = elem + "/div/div[%d]/div[2]/div[4]/div[4]/div[2]/div[1]/a[1]" %i
                             oripost_elem = elem + "/div/div[%d]/div[2]/div[4]/div[4]/div[2]/div[2]" %i
-                
+                            
                             fwdcomment = self.driver.find_element_by_xpath(fwdtext_elem).text
                             fwd_author = self.driver.find_element_by_xpath(fwdauthor_elem).text
                             ori_author = self.driver.find_element_by_xpath(oriauthor_elem).text
@@ -171,7 +179,7 @@ class Weibo(object):
         output.close()
         
         if len(Time) > 12:
-            Time = Time.replace('-1-','-01-')
+            Time.replace('-1-','-01-')
             Time.replace('-2-','-02-')
             Time.replace('-3-','-03-')
             Time.replace('-4-','-04-')
@@ -181,17 +189,25 @@ class Weibo(object):
             Time.replace('-8-','-08-')
             Time.replace('-9-','-09-')
             date = datetime.strptime(Time, '%Y-%m-%d %H:%M')
-        
-        return(date.year)
+            year = date.year
+        else:
+            year = 2017
+            
+        return(year)
 
 
     def isElementPresent(self,locator):
-        try:
-            self.driver.find_element_by_xpath(locator)
-        except NoSuchElementException:
-            return False
-        return True
-
+        while True:
+            try:
+                self.driver.find_element_by_xpath(locator)
+                return(True)
+                break
+            except NoSuchElementException:
+                return(False)
+                break
+            except TimeoutException:
+                print('time out, will do it again.')
+            
 
     def GetMaxPage(self, url):
         """
@@ -239,7 +255,7 @@ class Weibo(object):
 
     def VisitPersonPage(self, userid):
             
-        userfile = codecs.open("weibo/user_stats.txt", 'a', 'utf-8') 
+        userfile = codecs.open("weibo_data/user_stats.txt", 'a', 'utf-8') 
         
         try:
             
@@ -271,7 +287,7 @@ class Weibo(object):
             print(u'Done!\n\n')
             
         userfile.close()
-        
+ 
         
     def Scrape(self): 
         """
@@ -279,37 +295,53 @@ class Weibo(object):
         """
         url2 = self.url + "?profile_ftype=1&is_all=1#_0"
         print(url2)
-        maxpage = self.GetMaxPage(url2)
+        #maxpage = self.GetMaxPage(url2)
+        maxpage = 300
         if 'u/' in self.url:
             userid = self.url.split(".com/u/",1)[1] 
         else:
             userid = self.url.split(".com/",1)[1] 
     
-        output = codecs.open("weibo/%s.txt" %userid, 'w', 'utf-8') #create user id file
+        output = codecs.open("weibo_data/%s.txt" %userid, 'w', 'utf-8') #create user id file
         output.close()
     
         for i in range(1,maxpage+1): #go to each weibo page
             #select all post, not just the default "hot" ones
             url1 = self.url + "?is_search=0&visible=0&is_all=1&is_tag=0&profile_ftype=1&page=" + str(i) + "#feedtop"
             loadpage = False
+            print(url1)
             while loadpage == False:
+             
                 try:
-                    print(url1)
                     self.driver.get(url1)
                     time.sleep(5)
-                except TimeoutException:
+                    for k in range (10, 50):
+                        elem = "//*[@id='Pl_Official_MyProfileFeed__%d']" %k
+                        if self.isElementPresent(elem) == False:
+                            continue
+                        else:
+                            break
+                            
+                    if self.isElementPresent(elem)== True:
+                        loadpage = True 
+                    else:
+                        loadpage = False
+                                     
+                except Exception as e:
+                    print("Error: ",e)
                     self.driver.refresh()
                     loadpage = False
-                finally:
-                    loadpage = True
+                        #loadpage = False
+
             
             #scroll to bottom to load page
             for j in range(1,5):
                 self.driver.execute_script("window.scrollTo(0, document.body.scrollHeight)")
                 time.sleep(3)
-                WebDriverWait(self.driver, 8).until(lambda d: d.execute_script('return document.readyState') == 'complete')
+                #WebDriverWait(self.driver, 8).until(lambda d: d.execute_script('return document.readyState') == 'complete')
                 
-            print('page is scrape ready')
+                
+            print('page ', i, ' is scrape ready')
             if i == 1:
                 self.VisitPersonPage(userid)
                 
