@@ -85,7 +85,7 @@ class Weibo(object):
         #if self.driver.find_element_by_xpath.   
         #    没有发过微博
            
-        for i in range(2, 60):
+        for i in range(2, 70):
             try:
                 text_elem = elem + "/div/div[%d]/div[1]/div[3]/div[3]" % i
                 time_elem = elem + "/div/div[%d]/div[1]/div[3]/div[2]/a[1]" % i
@@ -310,25 +310,25 @@ class Weibo(object):
             url1 = self.url + "?is_search=0&visible=0&is_all=1&is_tag=0&profile_ftype=1&page=" + str(i) + "#feedtop"
             loadpage = False
             print(url1)
+            
             while loadpage == False:
-             
                 try:
                     self.driver.get(url1)
                     time.sleep(5)
-                    for k in range (10, 50):
-                        elem = "//*[@id='Pl_Official_MyProfileFeed__%d']" %k
-                        if self.isElementPresent(elem) == False:
-                            continue
-                        else:
-                            break
+                    #for k in range (10, 50):
+                    #    elem = "//*[@id='Pl_Official_MyProfileFeed__%d']" %k
+                    #    if self.isElementPresent(elem) == False:
+                    #        continue
+                    #    else:
+                    #        break
                             
-                    if self.isElementPresent(elem)== True:
+                    if self.isElementPresent('//*[@id="plc_main"]/div[2]')== True:
                         loadpage = True 
                     else:
                         loadpage = False
                                      
-                except Exception as e:
-                    print("Error: ",e)
+                except TimeoutException:
+                    print("loading too long. refresh.")
                     self.driver.refresh()
                     loadpage = False
                         #loadpage = False
@@ -340,7 +340,24 @@ class Weibo(object):
                 time.sleep(3)
                 #WebDriverWait(self.driver, 8).until(lambda d: d.execute_script('return document.readyState') == 'complete')
                 
-                
+    
+            src = self.driver.page_source
+            to_repeat = bool(re.search(r'点击重新载入', src))
+            no_weibo = bool(re.search(r'还没有发过微博', src))
+            no_weibo_eng = bool(re.search(r"hasn't posted weibo yet", src))
+             
+            while to_repeat == True:
+                self.driver.refresh()
+                time.sleep(5)
+                for j in range(1,5):
+                    self.driver.execute_script("window.scrollTo(0, document.body.scrollHeight)")
+                    time.sleep(3)
+                src = self.driver.page_source
+                to_repeat = bool(re.search(r'点击重新载入', src))
+           
+            if no_weibo == True or no_weibo_eng == True :
+                break
+            
             print('page ', i, ' is scrape ready')
             if i == 1:
                 self.VisitPersonPage(userid)
